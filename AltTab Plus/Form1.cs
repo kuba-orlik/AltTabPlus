@@ -23,7 +23,7 @@ namespace AltTab_Plus {
 
         private void button1_Click(object sender, EventArgs e) {
             thumbnails = new Thumbnails(this.Handle);
-            altTab = new InterceptAltTab(addItem);
+            altTab = new InterceptAltTab(addItem, addItem2);
             for (int i = 0; i < thumbnails.ItemNumber; ++i) {
                 listBox1.Items.Add(thumbnails.WindowName(i) + " " + (thumbnails.WindowFlag(i).ToString("x")));
             }
@@ -35,6 +35,9 @@ namespace AltTab_Plus {
             listBox1.Items.Add("alt+tab");
         }
 
+        private void addItem2() {
+            listBox1.Items.Add("shift+alt+tab");
+        }
 
     }
 }

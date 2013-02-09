@@ -7,3 +7,12 @@ C:\Users\Piotr\Documents\Visual Studio 2010\Projects\AltTab Plus\AltTab Plus\obj
 C:\Users\Piotr\Documents\Visual Studio 2010\Projects\AltTab Plus\AltTab Plus\obj\x86\Debug\GenerateResource.write.1.tlog
 C:\Users\Piotr\Documents\Visual Studio 2010\Projects\AltTab Plus\AltTab Plus\obj\x86\Debug\AltTab Plus.exe
 C:\Users\Piotr\Documents\Visual Studio 2010\Projects\AltTab Plus\AltTab Plus\obj\x86\Debug\AltTab Plus.pdb
+C:\Users\Piotr\Documents\GitHub\AltTabPlus\AltTab Plus\obj\x86\Debug\AltTab Plus.exe
+C:\Users\Piotr\Documents\GitHub\AltTabPlus\AltTab Plus\obj\x86\Debug\AltTab Plus.pdb
+C:\Users\Piotr\Documents\GitHub\AltTabPlus\AltTab Plus\obj\x86\Debug\ResolveAssemblyReference.cache
+C:\Users\Piotr\Documents\GitHub\AltTabPlus\AltTab Plus\obj\x86\Debug\AltTab_Plus.Form1.resources
+C:\Users\Piotr\Documents\GitHub\AltTabPlus\AltTab Plus\obj\x86\Debug\AltTabPlus.Properties.Resources.resources
+C:\Users\Piotr\Documents\GitHub\AltTabPlus\AltTab Plus\obj\x86\Debug\GenerateResource.read.1.tlog
+C:\Users\Piotr\Documents\GitHub\AltTabPlus\AltTab Plus\obj\x86\Debug\GenerateResource.write.1.tlog
+C:\Users\Piotr\Documents\GitHub\AltTabPlus\AltTab Plus\bin\Debug\AltTab Plus.exe
+C:\Users\Piotr\Documents\GitHub\AltTabPlus\AltTab Plus\bin\Debug\AltTab Plus.pdb

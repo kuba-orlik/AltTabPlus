@@ -7,21 +7,21 @@ using System.Runtime.InteropServices;
 namespace AltTab_Plus {
     class InterceptAltTab {
         public delegate void FunPtr();
-        [DllImport("key_interception.dll", CallingConvention = CallingConvention.Cdecl)]
-        static extern short InstallAltTabHook();
-        [DllImport("key_interception.dll", CallingConvention = CallingConvention.Cdecl)]
-        static extern void setFunPtr(FunPtr fp);
-        [DllImport("key_interception.dll", CallingConvention = CallingConvention.Cdecl)]
-        static extern void UninstallAltTabHook();
+        [DllImport("key_interceptor.dll", CallingConvention = CallingConvention.Cdecl)]
+        static extern short installAltTabHooks();
+        [DllImport("key_interceptor.dll", CallingConvention = CallingConvention.Cdecl)]
+        static extern void setFunctionPointers(FunPtr fp, FunPtr fp2);
+        [DllImport("key_interceptor.dll", CallingConvention = CallingConvention.Cdecl)]
+        static extern void uninstallAltTabHooks();
 
-        public InterceptAltTab(FunPtr onAltTab) {
-            setFunPtr(onAltTab);
-            InstallAltTabHook();
+        public InterceptAltTab(FunPtr onAltTab, FunPtr onShiftAltTab) {
+            setFunctionPointers(onAltTab, onShiftAltTab);
+            installAltTabHooks();
 
         }
 
         ~InterceptAltTab() {
-            UninstallAltTabHook();
+            uninstallAltTabHooks();
         }
         //TODO free hook
 
