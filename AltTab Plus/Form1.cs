@@ -23,12 +23,12 @@ namespace AltTab_Plus {
 
         private void button1_Click(object sender, EventArgs e) {
             thumbnails = new Thumbnails(this.Handle);
-            altTab = new InterceptAltTab(addItem, addItem2);
-            for (int i = 0; i < thumbnails.ItemNumber; ++i) {
-                listBox1.Items.Add(thumbnails.WindowName(i) + " " + (thumbnails.WindowFlag(i).ToString("x")));
+            altTab = new InterceptAltTab(this.Handle, addItem, addItem2);
+            for (int i = 0; i < thumbnails.itemNumber; ++i) {
+                listBox1.Items.Add(thumbnails.windowName(i) + " " + (thumbnails.windowFlag(i).ToString("x")));
             }
-            listBox1.Items.Add(thumbnails.ItemNumber);
-            thumbnails.DisplayAllThumbnails(ref image, image.Left, image.Top);
+            listBox1.Items.Add(thumbnails.itemNumber);
+            thumbnails.displayAllThumbnails(ref image, image.Left, image.Top);
         }
 
         private void addItem() {

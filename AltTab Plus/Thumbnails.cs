@@ -55,8 +55,9 @@ namespace AltTab_Plus {
         const int DWM_TNP_OPACITY = 0x4;
         const int DWM_TNP_RECTDESTINATION = 0x1;
         const int GWL_STYLE = -16;
-        const uint GWL_HWNDNEXT = 2;
+        const int GW_OWNER = 4;
         const long WS_VISIBLE = 0x10000000L;
+        const long WS_FOURTH_WORD = 0x000f0000L;
         const int S_OK = 0x00000000;
         // end of WINAPI consts
 
@@ -83,6 +84,8 @@ namespace AltTab_Plus {
         [DllImport("User32.dll", CallingConvention = CallingConvention.Winapi)]
         static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
         [DllImport("User32.dll", CallingConvention = CallingConvention.Winapi)]
+        static extern long GetWindowThreadProcessId(IntPtr hWnd, out ulong lpdwProcessId);
+        [DllImport("User32.dll", CallingConvention = CallingConvention.Winapi)]
         static extern IntPtr GetParent(IntPtr hWnd);
         [DllImport("Dwmapi.dll", CallingConvention = CallingConvention.Winapi)]
         static extern int DwmQueryThumbnailSourceSize(IntPtr thumbnail, out SIZE size);
@@ -94,27 +97,47 @@ namespace AltTab_Plus {
         public Thumbnails(IntPtr handle) {
             windowList = new wndList [maxWnd];
             hWnd = handle;
-            GetWindowList();
+            getWindowList();
             maxWnd = curWnd;
         }
 
-        void GetWindowList() {
+        void getWindowList() {
             IntPtr tmp = new IntPtr(0);
             EnumWindows(EnumWindowsProc, tmp);
         }
 
-        bool IsWindowVisible(long windowStyle) {
-            if ((windowStyle & WS_VISIBLE) == WS_VISIBLE && ((windowStyle >> 31 & 1) != 1 || (windowStyle >> 12 & 0xf) == 0xf)
-            && (windowStyle >> 17 & 1) == 1)
+        bool isWindowVisible(IntPtr hWnd) {
+            long windowStyle = GetWindowLong(hWnd, GWL_STYLE);
+            return ((windowStyle & WS_VISIBLE) == WS_VISIBLE);
+        }
+
+        bool isWindowVisibleEx(IntPtr hWnd) {
+            long windowStyle = GetWindowLong(hWnd, GWL_STYLE);
+            if ((windowStyle & WS_VISIBLE) == WS_VISIBLE && ((windowStyle & WS_FOURTH_WORD) > 0 || (windowStyle & 0xffff) > 0))
                 return true;
+            return false;
+        }
+
+        bool isAltTabWindow(IntPtr hWnd) {
+            /* We assume that alt+tab window has to:
+             * be visible
+             * in case it doesn't have parent, it shouldn't have owner either
+             * in it is child, its parent should not be visible and be in the same thread
+             * it should have an icon associated (or a parent with an icon */
+            if (isWindowVisibleEx(hWnd)) {
+                ulong NULL = 0;
+                IntPtr parentHwnd = GetParent(hWnd);
+                IntPtr ownerHwnd = GetWindow(hWnd, GW_OWNER);
+                return !((parentHwnd == IntPtr.Zero && ownerHwnd.ToInt64() > 0 && isWindowVisible(ownerHwnd)) || (parentHwnd != IntPtr.Zero && isWindowVisible(parentHwnd) && GetWindowThreadProcessId(parentHwnd, out NULL) == GetWindowThreadProcessId(hWnd, out NULL)));
+            }
             return false;
         }
 
         bool EnumWindowsProc(IntPtr handle, IntPtr lParam) {
             long windowStyle = GetWindowLong(handle, GWL_STYLE);
             StringBuilder str = new StringBuilder(256);
-            if (handle != hWnd && IsWindowVisible(windowStyle)) { // checking whether a window is visible and is not our window
-                if (GetParent(handle) == IntPtr.Zero && GetWindowText(handle, str, 255) > 0) { // checking if a window has text in bar and has parent
+            if (handle != hWnd && isAltTabWindow(handle)) { // checking whether a window is visible and is not our window
+                if (GetWindowText(handle, str, 255) > 0) { // checking if a window has text in bar
                     if (DwmRegisterThumbnail(hWnd, handle, out windowList[curWnd].thumbnail) == S_OK) { // checking if its thumbnail is available
                         windowList[curWnd].name = str.ToString();
                         windowList[curWnd].flag = windowStyle;
@@ -129,19 +152,19 @@ namespace AltTab_Plus {
             return true;
         }
 
-        public void DisplayAllThumbnails(ref PictureBox image, int l, int t) {
+        public void displayAllThumbnails(ref PictureBox image, int l, int t) {
             int i = 0;
             int left, width = 180, top, space = 10;
             TextDrawing text = new TextDrawing(new Font("Verdana", 11), ref image);
             while (i < maxWnd) {
                 left = l + i % PREVIEWS_IN_ROW * (width + space);
                 top = t + i / PREVIEWS_IN_ROW * (width + space);
-                DisplayThumbnail(i++, left, top);
+                displayThumbnail(i++, left, top);
                 //text.DrawText(windowList[i++].name, new Point(left + width + 5, top+width+5));
             }
         }
 
-        bool DisplayThumbnail(int wndNum, int left, int top) {
+        bool displayThumbnail(int wndNum, int left, int top) {
             SIZE size;
             DwmQueryThumbnailSourceSize(windowList[wndNum].thumbnail, out size);
             THUMBNAIL_PROPERTIES props = new THUMBNAIL_PROPERTIES();
@@ -152,17 +175,17 @@ namespace AltTab_Plus {
             return (DwmUpdateThumbnailProperties(windowList[wndNum].thumbnail, ref props) == S_OK);
         }
 
-        public string WindowName(int i) {
+        public string windowName(int i) {
             return (i < maxWnd) ? windowList[i].name : null;
         }
 
-        public long WindowFlag(int i) {
+        public long windowFlag(int i) {
             return (i < maxWnd) ? windowList[i].flag : 0;
         }
 
         //public GetNextWindow
 
-        public int ItemNumber {
+        public int itemNumber {
             get {
                 return maxWnd;
             }
