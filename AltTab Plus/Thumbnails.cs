@@ -9,14 +9,14 @@ using System.Windows.Forms;
 namespace AltTab_Plus {
 
     struct wndList {
-        public IntPtr hWnd;
-        public IntPtr thumbnail;
-        public string name;
         public long flag;
+        public IntPtr hWnd;
+        public Icon icon;
+        public string name;
+        public IntPtr thumbnail;
     }
 
     struct RECT {
-
         public RECT(int l, int t, int r, int b) {
             left = l;
             top = t;
@@ -59,6 +59,9 @@ namespace AltTab_Plus {
         const long WS_VISIBLE = 0x10000000L;
         const long WS_FOURTH_WORD = 0x000f0000L;
         const int S_OK = 0x00000000;
+        const int GCLP_HICON = -14;
+        const int GCLP_HICONSM = -34;
+        const uint WM_GETICON = 0x007f;
         // end of WINAPI consts
 
         //other consts
@@ -68,7 +71,7 @@ namespace AltTab_Plus {
         IntPtr hWnd;
         int maxWnd = 5; // current limitation
         int curWnd = 0; 
-        public wndList[] windowList= null;
+        wndList[] windowList = null;
         delegate bool BoolDelegate(IntPtr handle, IntPtr lParam);
         // TODO DwmUnregisterThumbnail
         [DllImport("User32.dll", CallingConvention = CallingConvention.Winapi)]
@@ -87,12 +90,18 @@ namespace AltTab_Plus {
         static extern long GetWindowThreadProcessId(IntPtr hWnd, out ulong lpdwProcessId);
         [DllImport("User32.dll", CallingConvention = CallingConvention.Winapi)]
         static extern IntPtr GetParent(IntPtr hWnd);
+        [DllImport("User32.dll", CallingConvention = CallingConvention.Winapi)]
+        static extern IntPtr GetClassLong(IntPtr hWnd, int nIndex);
+        [DllImport("User32.dll", CallingConvention = CallingConvention.Winapi)]
+        static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
         [DllImport("Dwmapi.dll", CallingConvention = CallingConvention.Winapi)]
         static extern int DwmQueryThumbnailSourceSize(IntPtr thumbnail, out SIZE size);
         [DllImport("Dwmapi.dll", CallingConvention = CallingConvention.Winapi)]
         static extern int DwmRegisterThumbnail(IntPtr ownHWnd, IntPtr hWnd, out IntPtr thumbnail);
         [DllImport("Dwmapi.dll", CallingConvention = CallingConvention.Winapi)]
         static extern int DwmUpdateThumbnailProperties(IntPtr thumbnail, ref THUMBNAIL_PROPERTIES prnProperites);
+        [DllImport("Dwmapi.dll", CallingConvention = CallingConvention.Winapi)]
+        static extern int DwmUnregisterThumbnail(IntPtr thumbnail); 
 
         public Thumbnails(IntPtr handle) {
             windowList = new wndList [maxWnd];
@@ -113,9 +122,7 @@ namespace AltTab_Plus {
 
         bool isWindowVisibleEx(IntPtr hWnd) {
             long windowStyle = GetWindowLong(hWnd, GWL_STYLE);
-            if ((windowStyle & WS_VISIBLE) == WS_VISIBLE && ((windowStyle & WS_FOURTH_WORD) > 0 || (windowStyle & 0xffff) > 0))
-                return true;
-            return false;
+            return ((windowStyle & WS_VISIBLE) == WS_VISIBLE && ((windowStyle & WS_FOURTH_WORD) > 0 || (windowStyle & 0xffff) > 0));
         }
 
         bool isAltTabWindow(IntPtr hWnd) {
@@ -123,7 +130,7 @@ namespace AltTab_Plus {
              * be visible
              * in case it doesn't have parent, it shouldn't have owner either
              * in it is child, its parent should not be visible and be in the same thread
-             * it should have an icon associated (or a parent with an icon */
+             * it should have an icon associated (or a parent with an icon) */
             if (isWindowVisibleEx(hWnd)) {
                 ulong NULL = 0;
                 IntPtr parentHwnd = GetParent(hWnd);
@@ -133,18 +140,36 @@ namespace AltTab_Plus {
             return false;
         }
 
+        bool getWindowIcon(IntPtr hWnd) {
+            IntPtr iconHandle = GetClassLong(hWnd, GCLP_HICON);
+            if (iconHandle != IntPtr.Zero)
+                if ((windowList[curWnd].icon = Icon.FromHandle(iconHandle)) != null)
+                    return true;
+            IntPtr iconBigFlag = new IntPtr(1);
+            if ((iconHandle = SendMessage(hWnd, WM_GETICON, iconBigFlag, IntPtr.Zero)) != IntPtr.Zero)
+                if ((windowList[curWnd].icon = Icon.FromHandle(iconHandle)) != null)
+                    return true;
+            IntPtr ownerHwnd = GetWindow(hWnd, GW_OWNER);
+            if (ownerHwnd != IntPtr.Zero && (iconHandle = SendMessage(ownerHwnd, WM_GETICON, iconBigFlag, IntPtr.Zero)) != IntPtr.Zero)
+                if ((windowList[curWnd].icon = Icon.FromHandle(iconHandle)) != null)
+                    return true;
+            return false;
+        }
+
         bool EnumWindowsProc(IntPtr handle, IntPtr lParam) {
             long windowStyle = GetWindowLong(handle, GWL_STYLE);
             StringBuilder str = new StringBuilder(256);
             if (handle != hWnd && isAltTabWindow(handle)) { // checking whether a window is visible and is not our window
                 if (GetWindowText(handle, str, 255) > 0) { // checking if a window has text in bar
-                    if (DwmRegisterThumbnail(hWnd, handle, out windowList[curWnd].thumbnail) == S_OK) { // checking if its thumbnail is available
-                        windowList[curWnd].name = str.ToString();
-                        windowList[curWnd].flag = windowStyle;
-                        windowList[curWnd++].hWnd = handle;
-                        if (curWnd == maxWnd) { // checking if the index of array does not exceed its size
-                            maxWnd += 5;
-                            Array.Resize<wndList>(ref windowList, maxWnd);
+                    if (getWindowIcon(handle)) { // checking if a window has icon associated with
+                        if (DwmRegisterThumbnail(hWnd, handle, out windowList[curWnd].thumbnail) == S_OK) { // checking if its thumbnail is available
+                            windowList[curWnd].name = str.ToString();
+                            windowList[curWnd].flag = windowStyle;
+                            windowList[curWnd++].hWnd = handle;
+                            if (curWnd == maxWnd) { // checking if the index of array does not exceed its size
+                                maxWnd += 5;
+                                Array.Resize<wndList>(ref windowList, maxWnd);
+                            }
                         }
                     }
                 }
@@ -155,13 +180,24 @@ namespace AltTab_Plus {
         public void displayAllThumbnails(ref PictureBox image, int l, int t) {
             int i = 0;
             int left, width = 180, top, space = 10;
-            TextDrawing text = new TextDrawing(new Font("Verdana", 11), ref image);
+            Graphics gfx = image.CreateGraphics();
+            //TextDrawing text = new TextDrawing(new Font("Verdana", 11), ref image);
             while (i < maxWnd) {
                 left = l + i % PREVIEWS_IN_ROW * (width + space);
                 top = t + i / PREVIEWS_IN_ROW * (width + space);
-                displayThumbnail(i++, left, top);
+                displayThumbnail(i, left, top);
+                gfx.DrawIcon(windowList[i++].icon, left, top);
                 //text.DrawText(windowList[i++].name, new Point(left + width + 5, top+width+5));
             }
+        }
+
+        public void eraseAllThumbnails() {
+            for (int i = 0; i < maxWnd; ++i) {
+                DwmUnregisterThumbnail(windowList[i].thumbnail);
+            }
+            Array.Clear(windowList, 0, maxWnd);
+            maxWnd = 5;
+            curWnd = 0;
         }
 
         bool displayThumbnail(int wndNum, int left, int top) {
@@ -175,12 +211,10 @@ namespace AltTab_Plus {
             return (DwmUpdateThumbnailProperties(windowList[wndNum].thumbnail, ref props) == S_OK);
         }
 
-        public string windowName(int i) {
-            return (i < maxWnd) ? windowList[i].name : null;
-        }
-
-        public long windowFlag(int i) {
-            return (i < maxWnd) ? windowList[i].flag : 0;
+        public wndList windowListItem(int i) {
+            if (i < maxWnd)
+                return windowList[i];
+            throw new Exception();
         }
 
         //public GetNextWindow

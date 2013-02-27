@@ -12,6 +12,7 @@ namespace AltTab_Plus {
        public partial class Form1 : Form {
         Thumbnails thumbnails;
         InterceptAltTab altTab;
+        
 
         public Form1() {
             InitializeComponent();
@@ -25,7 +26,10 @@ namespace AltTab_Plus {
             thumbnails = new Thumbnails(this.Handle);
             altTab = new InterceptAltTab(this.Handle, addItem, addItem2);
             for (int i = 0; i < thumbnails.itemNumber; ++i) {
-                listBox1.Items.Add(thumbnails.windowName(i) + " " + (thumbnails.windowFlag(i).ToString("x")));
+                try {
+                    listBox1.Items.Add(thumbnails.windowListItem(i).name + " " + (thumbnails.windowListItem(i).flag.ToString("x")));
+                }
+                catch (Exception ex) {}
             }
             listBox1.Items.Add(thumbnails.itemNumber);
             thumbnails.displayAllThumbnails(ref image, image.Left, image.Top);
@@ -37,6 +41,11 @@ namespace AltTab_Plus {
 
         private void addItem2() {
             listBox1.Items.Add("shift+alt+tab");
+        }
+
+        private void button2_Click(object sender, EventArgs e) {
+            KillingModule.CloseWindowGentle(thumbnails.windowListItem(0).hWnd);
+            thumbnails.eraseAllThumbnails();
         }
 
     }
