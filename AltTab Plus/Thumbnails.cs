@@ -58,6 +58,8 @@ namespace AltTab_Plus {
         const int GW_OWNER = 4;
         const long WS_VISIBLE = 0x10000000L;
         const long WS_FOURTH_WORD = 0x000f0000L;
+        const long WS_POPUP = 0x80000000L;
+        const long WS_EX_TOOL_WINDOW = 0x00000080L;
         const int S_OK = 0x00000000;
         const int GCLP_HICON = -14;
         const int GCLP_HICONSM = -34;
@@ -120,8 +122,7 @@ namespace AltTab_Plus {
             return ((windowStyle & WS_VISIBLE) == WS_VISIBLE);
         }
 
-        bool isWindowVisibleEx(IntPtr hWnd) {
-            long windowStyle = GetWindowLong(hWnd, GWL_STYLE);
+        bool isWindowVisibleEx(long windowStyle) {
             return ((windowStyle & WS_VISIBLE) == WS_VISIBLE && ((windowStyle & WS_FOURTH_WORD) > 0 || (windowStyle & 0xffff) > 0));
         }
 
@@ -130,30 +131,31 @@ namespace AltTab_Plus {
              * be visible
              * in case it doesn't have parent, it shouldn't have owner either
              * in it is child, its parent should not be visible and be in the same thread
-             * it should have an icon associated (or a parent with an icon) */
-            if (isWindowVisibleEx(hWnd)) {
+             * have a parent and owner identical when associated flag WS_EX_TOOLBAR and WS_POPUP */
+            long windowStyle = GetWindowLong(hWnd, GWL_STYLE);
+            if (isWindowVisibleEx(windowStyle)) {
                 ulong NULL = 0;
                 IntPtr parentHwnd = GetParent(hWnd);
                 IntPtr ownerHwnd = GetWindow(hWnd, GW_OWNER);
-                return !((parentHwnd == IntPtr.Zero && ownerHwnd.ToInt64() > 0 && isWindowVisible(ownerHwnd)) || (parentHwnd != IntPtr.Zero && isWindowVisible(parentHwnd) && GetWindowThreadProcessId(parentHwnd, out NULL) == GetWindowThreadProcessId(hWnd, out NULL)));
+                return !((parentHwnd == IntPtr.Zero && ownerHwnd.ToInt64() > 0 && isWindowVisible(ownerHwnd)) || 
+                    (parentHwnd != IntPtr.Zero && isWindowVisible(parentHwnd) && GetWindowThreadProcessId(parentHwnd, out NULL) == GetWindowThreadProcessId(hWnd, out NULL)) || 
+                    ((windowStyle & (WS_EX_TOOL_WINDOW | WS_POPUP)) == (WS_EX_TOOL_WINDOW | WS_POPUP) && ownerHwnd == IntPtr.Zero));
             }
             return false;
         }
 
-        bool getWindowIcon(IntPtr hWnd) {
+        void getWindowIcon(IntPtr hWnd) {
             IntPtr iconHandle = GetClassLong(hWnd, GCLP_HICON);
             if (iconHandle != IntPtr.Zero)
                 if ((windowList[curWnd].icon = Icon.FromHandle(iconHandle)) != null)
-                    return true;
+                    return;
             IntPtr iconBigFlag = new IntPtr(1);
             if ((iconHandle = SendMessage(hWnd, WM_GETICON, iconBigFlag, IntPtr.Zero)) != IntPtr.Zero)
                 if ((windowList[curWnd].icon = Icon.FromHandle(iconHandle)) != null)
-                    return true;
+                    return;
             IntPtr ownerHwnd = GetWindow(hWnd, GW_OWNER);
             if (ownerHwnd != IntPtr.Zero && (iconHandle = SendMessage(ownerHwnd, WM_GETICON, iconBigFlag, IntPtr.Zero)) != IntPtr.Zero)
-                if ((windowList[curWnd].icon = Icon.FromHandle(iconHandle)) != null)
-                    return true;
-            return true;
+                if ((windowList[curWnd].icon = Icon.FromHandle(iconHandle)) != null) {}
         }
 
         bool EnumWindowsProc(IntPtr handle, IntPtr lParam) {
@@ -161,15 +163,14 @@ namespace AltTab_Plus {
             StringBuilder str = new StringBuilder(256);
             if (handle != hWnd && isAltTabWindow(handle)) { // checking whether a window is visible and is not our window
                 if (GetWindowText(handle, str, 255) > 0) { // checking if a window has text in bar
-                    if (getWindowIcon(handle)) { // checking if a window has icon associated with
-                        if (DwmRegisterThumbnail(hWnd, handle, out windowList[curWnd].thumbnail) == S_OK) { // checking if its thumbnail is available
-                            windowList[curWnd].name = str.ToString();
-                            windowList[curWnd].flag = windowStyle;
-                            windowList[curWnd++].hWnd = handle;
-                            if (curWnd == maxWnd) { // checking if the index of array does not exceed its size
-                                maxWnd += 5;
-                                Array.Resize<wndList>(ref windowList, maxWnd);
-                            }
+                    if (DwmRegisterThumbnail(hWnd, handle, out windowList[curWnd].thumbnail) == S_OK) { // checking if its thumbnail is available
+                        getWindowIcon(handle);
+                        windowList[curWnd].name = str.ToString();
+                        windowList[curWnd].flag = windowStyle;
+                        windowList[curWnd++].hWnd = handle;
+                        if (curWnd == maxWnd) { // checking if the index of array does not exceed its size
+                            maxWnd += 5;
+                            Array.Resize<wndList>(ref windowList, maxWnd);
                         }
                     }
                 }
@@ -187,8 +188,9 @@ namespace AltTab_Plus {
                 top = t + i / PREVIEWS_IN_ROW * (width + space);
                 displayThumbnail(i, left, top);
                 if (windowList[i].icon != null) {
-                    gfx.DrawIcon(windowList[i++].icon, left, top);
+                    gfx.DrawIcon(windowList[i].icon, left, top);
                 }
+                ++i;
                 //text.DrawText(windowList[i++].name, new Point(left + width + 5, top+width+5));
             }
         }

@@ -16,18 +16,18 @@ namespace AltTab_Plus {
         static extern void uninstallAltTabHooks();
 
         public InterceptAltTab(IntPtr hWnd, FunPtr onAltTab, FunPtr onShiftAltTab) {
-            //try {
+            try {
                 setFunctionPointers(hWnd, onAltTab, onShiftAltTab);
                 installAltTabHooks();
-            //}
-            /*catch (DllNotFoundException e) {
+            }
+            catch (DllNotFoundException e) {
                 MessageBox.Show("Couldn't find the module key_interceptor.dll. Program will exit.", "Module not found", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
             }
             catch (EntryPointNotFoundException e) {
                 MessageBox.Show("The module key_interceptor.dll appears to be damaged. Program will exit.", "Module is damaged", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
-            }*/
+            }
         }
        
         ~InterceptAltTab() {
