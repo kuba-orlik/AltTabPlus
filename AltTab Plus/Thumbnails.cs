@@ -73,7 +73,7 @@ namespace AltTab_Plus {
         int curWnd = 0; 
         wndList[] windowList = null;
         delegate bool BoolDelegate(IntPtr handle, IntPtr lParam);
-        // TODO DwmUnregisterThumbnail
+
         [DllImport("User32.dll", CallingConvention = CallingConvention.Winapi)]
         static extern bool EnumWindows(BoolDelegate d, IntPtr lParam);
         [DllImport("User32.dll", CallingConvention = CallingConvention.Winapi)]
@@ -153,7 +153,7 @@ namespace AltTab_Plus {
             if (ownerHwnd != IntPtr.Zero && (iconHandle = SendMessage(ownerHwnd, WM_GETICON, iconBigFlag, IntPtr.Zero)) != IntPtr.Zero)
                 if ((windowList[curWnd].icon = Icon.FromHandle(iconHandle)) != null)
                     return true;
-            return false;
+            return true;
         }
 
         bool EnumWindowsProc(IntPtr handle, IntPtr lParam) {
@@ -186,7 +186,9 @@ namespace AltTab_Plus {
                 left = l + i % PREVIEWS_IN_ROW * (width + space);
                 top = t + i / PREVIEWS_IN_ROW * (width + space);
                 displayThumbnail(i, left, top);
-                gfx.DrawIcon(windowList[i++].icon, left, top);
+                if (windowList[i].icon != null) {
+                    gfx.DrawIcon(windowList[i++].icon, left, top);
+                }
                 //text.DrawText(windowList[i++].name, new Point(left + width + 5, top+width+5));
             }
         }
